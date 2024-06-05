@@ -1,0 +1,59 @@
+//TABLAS
+
+CREATE TABLE genre (
+	id SERIAL PRIMARY KEY NOT NULL,
+	name VARCHAR(30)
+);
+
+CREATE TABLE movie (
+	id TEXT PRIMARY KEY NOT NULL,
+    title VARCHAR(100),
+    year INTEGER,
+    director VARCHAR(50),
+    duration INTEGER,
+    poster TEXT,
+    rate DECIMAL(2, 1) CHECK (value >= 0.0 AND value <= 9.9)
+);
+
+CREATE TABLE moviegenre (
+	movie_id VARCHAR(100),
+	genre_id INTEGER,
+	PRIMARY KEY (movie_id, genre_id),
+	FOREIGN KEY (movie_id) REFERENCES movie(id) ON DELETE CASCADE,
+	FOREIGN KEY (genre_id) REFERENCES genre(id)
+);
+
+
+
+
+//FUNCIONES
+
+//Funcion que al momento de insertar una movie, tambien inserta en la tabla moviegenre.
+CREATE OR REPLACE FUNCTION add_movie_with_genres(
+    movie_title VARCHAR, 
+    movie_year INT, 
+    movie_director VARCHAR, 
+    movie_duration INT, 
+    movie_poster VARCHAR, 
+    movie_rate DECIMAL, 
+    genres VARCHAR[]
+)
+RETURNS VOID AS $$
+DECLARE
+    movie_id INT;
+    genre_id INT;
+    genre_name VARCHAR;
+BEGIN
+    -- Insertar la nueva película y obtener su ID
+    INSERT INTO movie (title, year, director, duration, poster, rate)
+    VALUES (movie_title, movie_year, movie_director, movie_duration, movie_poster, movie_rate)
+    RETURNING id INTO movie_id;
+
+    -- Iterar sobre los géneros proporcionados e insertar en moviegenre
+    FOREACH genre_name IN ARRAY genres
+    LOOP
+        SELECT id INTO genre_id FROM genre WHERE genre = genre_name;
+        INSERT INTO moviegenre (mid, gid) VALUES (movie_id, genre_id);
+    END LOOP;
+END;
+$$ LANGUAGE plpgsql;
